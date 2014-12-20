@@ -63,28 +63,12 @@
         </plugins>
     </build>
 
-
     <dependencies>
-        <!--<dependency>-->
-        <!--<groupId>org.slf4j</groupId>-->
-        <!--<artifactId>slf4j-jcl</artifactId>-->
-        <!--<version>${slf4j.version}</version>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-        <!--<groupId>org.slf4j</groupId>-->
-        <!--<artifactId>slf4j-api</artifactId>-->
-        <!--<version>${slf4j.version}</version>-->
-        <!--</dependency>-->
         <dependency>
             <groupId>log4j</groupId>
             <artifactId>log4j</artifactId>
             <version>1.2.14</version>
         </dependency>
-        <!--<dependency>-->
-        <!--<groupId>com.jcabi</groupId>-->
-        <!--<artifactId>jcabi-log</artifactId>-->
-        <!--<version>0.15.2</version>-->
-        <!--</dependency>-->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
