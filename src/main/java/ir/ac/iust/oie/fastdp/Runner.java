@@ -1,5 +1,6 @@
 package ir.ac.iust.oie.fastdp;
 
+import ir.ac.iust.oie.fastdp.converter.PersianDadeganConverter;
 import ir.ac.iust.oie.fastdp.utils.LoggerUtil;
 import ir.ac.iust.oie.fastdp.utils.StringBuilderWriter;
 import org.apache.commons.cli.*;
@@ -27,7 +28,7 @@ public class Runner {
         CommandLineParser parser = new BasicParser();
         Action action = null;
         String locale = null;
-        Path inputPath, outputPath;
+        Path inputPath = null, outputPath = null;
         try {
             CommandLine line = parser.parse(options, args);
             if (!line.hasOption("a") || !line.hasOption("l") || !line.hasOption("i") || !line.hasOption("o"))
@@ -49,10 +50,16 @@ public class Runner {
         }
 
         assert action != null;
-        switch (action) {
-            case convert:
-                logger.trace("convert, locale = " + locale);
-                break;
+        try {
+            switch (action) {
+                case convert:
+                    logger.trace("convert, locale = " + locale);
+                    if (locale.equals("fa"))
+                        new PersianDadeganConverter(inputPath, outputPath).run();
+                    break;
+            }
+        } catch (Exception e) {
+            logger.error(e);
         }
     }
 
