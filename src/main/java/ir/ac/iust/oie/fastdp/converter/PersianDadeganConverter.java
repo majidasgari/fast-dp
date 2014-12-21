@@ -20,6 +20,7 @@ public class PersianDadeganConverter {
 
     private Path inputPath;
     private Path outputPath;
+    private int type = 1;
 
     public PersianDadeganConverter(Path inputPath, Path outputPath) {
         this.inputPath = inputPath;
@@ -46,10 +47,15 @@ public class PersianDadeganConverter {
     private void processSentence(Sentence sentence, ArrayList<String> outputLines) {
         for (int i = 1; i <= sentence.getLength(); i++) {
             Word word = sentence.getWord(i);
-            outputLines.add(word.getWordForm() + '\t' + word.getcPOSTag() + '\t'
-                    + (word.getHead() == 0 ? "ROOT" : sentence.getWord(word.getHead()).getcPOSTag()));
+            String cPosTag = word.getcPOSTag();
+            String targetTag = (word.getHead() == 0 ? "ROOT" : sentence.getWord(word.getHead()).getcPOSTag());
+            if (type == 1) {
+                if (!targetTag.equals("V")) targetTag = "O";
+                else if (cPosTag.equals("PUNC") || cPosTag.equals("ADV")) targetTag = "O";
+            }
+            String toWrite = word.getWordForm() + '\t' + word.getPOSTag() + '\t' + targetTag;
+            outputLines.add(toWrite.replace('\u200C', '_'));
         }
-        outputLines.add("");
         outputLines.add("");
     }
 }
