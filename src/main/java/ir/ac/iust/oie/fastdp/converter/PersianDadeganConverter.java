@@ -39,15 +39,17 @@ public class PersianDadeganConverter {
                 currentSentence = new Sentence();
             }
         }
-        Files.write(outputPath, outputLines, StandardOpenOption.CREATE);
+        Files.write(outputPath, outputLines, Charset.forName("UTF-8"), StandardOpenOption.CREATE);
+        logger.info("bye bye.");
     }
 
     private void processSentence(Sentence sentence, ArrayList<String> outputLines) {
         for (int i = 1; i <= sentence.getLength(); i++) {
             Word word = sentence.getWord(i);
             outputLines.add(word.getWordForm() + '\t' + word.getcPOSTag() + '\t'
-                    + (word.getHead() == 0 ? "ROOT" : sentence.getWord(word.getHead()).getcPOSTag())
-                    + '\n');
+                    + (word.getHead() == 0 ? "ROOT" : sentence.getWord(word.getHead()).getcPOSTag()));
         }
+        outputLines.add("");
+        outputLines.add("");
     }
 }
