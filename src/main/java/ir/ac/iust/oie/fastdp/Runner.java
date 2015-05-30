@@ -1,9 +1,9 @@
 package ir.ac.iust.oie.fastdp;
 
-import edu.stanford.nlp.ie.crf.CRFClassifier;
+import ir.ac.iust.nlp.ner.wrapper.NerRunner;
 import ir.ac.iust.oie.fastdp.converter.PersianDadeganConverter;
-import ir.ac.iust.oie.fastdp.utils.LoggerUtil;
-import ir.ac.iust.oie.fastdp.utils.StringBuilderWriter;
+import ir.ac.iust.text.utils.LoggerUtils;
+import ir.ac.iust.text.utils.StringBuilderWriter;
 import org.apache.commons.cli.*;
 import org.apache.log4j.Logger;
 
@@ -16,7 +16,7 @@ import java.nio.file.Paths;
  */
 public class Runner {
 
-    private static Logger logger = LoggerUtil.getLogger(Runner.class);
+    private static Logger logger = LoggerUtils.getLogger(Runner.class, "fast-dp.log");
 
     public static void main(String[] args) {
         // create the Options
@@ -25,7 +25,7 @@ public class Runner {
         options.addOption("l", "locale", true, "locale of action. fa is the only option.");
         options.addOption("i", "input", true, "input, standard CONLL dependency parsing corpus file.");
         options.addOption("o", "output", true, "output, standard CONLL NER/POS corpus file.");
-        options.addOption("m", "model", true, "model file, for train, test and prediction of CRF");
+        options.addOption("m", "model", true, "fast-dp FlexCRF model file, for prediction.");
 
         CommandLineParser parser = new BasicParser();
         Action action = null;
@@ -36,9 +36,15 @@ public class Runner {
             if (!line.hasOption("a") || !line.hasOption("i"))
                 showHelp(options);
             action = Action.valueOf(line.getOptionValue("a"));
-            if (action == null) showHelp(options);
-            if (action == Action.convert && (!line.hasOption("l") || !line.hasOption("o"))) showHelp(options);
-            else if (action != Action.convert && !line.hasOption("m")) showHelp(options);
+            if (action == null)
+                showHelp(options);
+            if (action == Action.convert && (!line.hasOption("l") || !line.hasOption("o")))
+                showHelp(options);
+            else if (action == Action.prepareForFlex && (!line.hasOption("l") || !line.hasOption("o")))
+                showHelp(options);
+            else if (action == Action.prediction && (!line.hasOption("l") || !line.hasOption("o")))
+                showHelp(options);
+
             locale = line.getOptionValue("l");
             if (!locale.equals("fa")) showHelp(options);
             inputPath = Paths.get(line.getOptionValue("i"));
@@ -65,18 +71,23 @@ public class Runner {
         assert action != null;
         try {
             switch (action) {
+                default:
                 case convert:
                     logger.trace("convert, locale = " + locale);
                     if (locale.equals("fa"))
                         new PersianDadeganConverter(inputPath, outputPath).run();
                     break;
-                case train:
-                    CRFClassifier classifier = CRFClassifier.getDefaultClassifier();
-                    classifier.train();
+                //HELP:
+                //http://nlp.stanford.edu/nlp/javadoc/javanlp/edu/stanford/nlp/ie/crf/CRFClassifier.html
+//                case train:
+//                    CRFClassifier.main(new String[]{"-trainFile", inputPath.toFile().getAbsolutePath(),
+//                            "-testFile", testPath.toFile().getAbsolutePath(),
+//                            "-macro", ">", modelPath.toFile().getAbsolutePath()});
+                case prepareForFlex:
+                    Path outputFolder = NerRunner.prepareForFlexCrf(inputPath);
+                    Files.copy(outputFolder.resolve("data.untagged"), outputPath);
                     break;
-                case test:
-                    break;
-                case predict:
+                case prediction:
                     break;
             }
         } catch (Exception e) {
@@ -89,9 +100,8 @@ public class Runner {
         final StringBuilder helpBuilder = new StringBuilder().append('\n');
         helpBuilder.append("Welcome to Fast Dependency Parser.").append('\n');
         helpBuilder.append("Required options for convert: a,l,i,o").append('\n');
-        helpBuilder.append("Required options for train: a,i,m").append('\n');
-        helpBuilder.append("Required options for test: a,i,m").append('\n');
-        helpBuilder.append("Required options for predict: a,i,m").append('\n');
+        helpBuilder.append("Required options for prepareForFlex: a,l,i,o").append('\n');
+        helpBuilder.append("Required options for prediction: a,l,i,o,m").append('\n');
         formatter.printHelp(new StringBuilderWriter(helpBuilder), 80, "java -jar fast-dp.jar", null,
                 options, 0, 0, "Thank you", false);
         logger.info(helpBuilder);

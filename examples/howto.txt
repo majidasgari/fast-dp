@@ -1,0 +1,7 @@
+Extract 7zip file to current folder by 7zip app.
+
+Conversion arguments:
+-a convert -i train_1st_rep.conll -l fa -o train.fdp
+
+Prediction argumetns:
+-a prediction -i train_1st_rep.fdp -l fa -o train.stanford -m alaki.txt
