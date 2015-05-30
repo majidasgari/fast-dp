@@ -1,7 +1,7 @@
 package ir.ac.iust.oie.fastdp;
 
-import ir.ac.iust.nlp.ner.wrapper.NerRunner;
 import ir.ac.iust.oie.fastdp.converter.PersianDadeganConverter;
+import ir.ac.iust.oie.fastdp.flexcrf.FlexCrfFeatureGenerator;
 import ir.ac.iust.text.utils.LoggerUtils;
 import ir.ac.iust.text.utils.StringBuilderWriter;
 import org.apache.commons.cli.*;
@@ -40,8 +40,6 @@ public class Runner {
                 showHelp(options);
             if (action == Action.convert && (!line.hasOption("l") || !line.hasOption("o")))
                 showHelp(options);
-            else if (action == Action.prepareForFlex && (!line.hasOption("l") || !line.hasOption("o")))
-                showHelp(options);
             else if (action == Action.prediction && (!line.hasOption("l") || !line.hasOption("o")))
                 showHelp(options);
 
@@ -74,8 +72,18 @@ public class Runner {
                 default:
                 case convert:
                     logger.trace("convert, locale = " + locale);
-                    if (locale.equals("fa"))
+                    if (locale.equals("fa")) {
                         new PersianDadeganConverter(inputPath, outputPath).run();
+                        logger.trace("converting pos tags ...");
+                        Path posFile = outputPath.toAbsolutePath().getParent().resolve(outputPath.getFileName() + ".pos");
+                        POSTagChanger.changePOSTags(outputPath, posFile, 40000);
+                        Path translatedFile = outputPath.toAbsolutePath().getParent().resolve(outputPath.getFileName() + ".trans");
+                        Transliterator.transliterate(posFile, translatedFile);
+                        Path crfUntaggedPath = outputPath.toAbsolutePath().getParent().resolve(outputPath.getFileName() + ".tagged");
+                        FlexCrfFeatureGenerator.main(array("-lbl", translatedFile.toAbsolutePath().toString(),
+                                crfUntaggedPath.toAbsolutePath().toString(), "no"));
+                        Files.deleteIfExists(translatedFile);
+                    }
                     break;
                 //HELP:
                 //http://nlp.stanford.edu/nlp/javadoc/javanlp/edu/stanford/nlp/ie/crf/CRFClassifier.html
@@ -83,16 +91,16 @@ public class Runner {
 //                    CRFClassifier.main(new String[]{"-trainFile", inputPath.toFile().getAbsolutePath(),
 //                            "-testFile", testPath.toFile().getAbsolutePath(),
 //                            "-macro", ">", modelPath.toFile().getAbsolutePath()});
-                case prepareForFlex:
-                    Path outputFolder = NerRunner.prepareForFlexCrf(inputPath);
-                    Files.copy(outputFolder.resolve("data.untagged"), outputPath);
-                    break;
                 case prediction:
                     break;
             }
         } catch (Exception e) {
             logger.error(e);
         }
+    }
+
+    private static String[] array(String... input) {
+        return input;
     }
 
     private static void showHelp(Options options) {

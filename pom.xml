@@ -67,7 +67,7 @@
     <dependencies>
         <dependency>
             <groupId>ac.ir.iust.nlp</groupId>
-            <artifactId>ner-wrapper</artifactId>
+            <artifactId>jhazm</artifactId>
             <version>0.1</version>
         </dependency>
         <dependency>
