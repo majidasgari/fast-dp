@@ -40,6 +40,7 @@ public class PersianDadeganConverter {
                 currentSentence = new Sentence();
             }
         }
+        Files.deleteIfExists(outputPath);
         Files.write(outputPath, outputLines, Charset.forName("UTF-8"), StandardOpenOption.CREATE);
         logger.info("bye bye.");
     }

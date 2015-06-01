@@ -1,6 +1,6 @@
 package ir.ac.iust.oie.fastdp;
 
-import ir.ac.iust.oie.fastdp.utils.Line;
+import ir.ac.iust.text.utils.WordLine;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -19,7 +19,7 @@ public class Transliterator {
             'ز', 'z', 'س', 's', 'ش', '$', 'ص', 'S', 'ض', 'D', 'ط', 'T', 'ظ', 'Z', 'ع', 'E', 'غ', 'g', 'ـ', '_', 'ف',
             'f', 'ق', 'q', 'ك', 'k', 'ل', 'l', 'م', 'm', 'ن', 'n', 'ه', 'h', 'و', 'w', 'ی', 'Y', 'ي', 'y', 'ى', 'y',
             'ٰ', '`', 'ٱ', '{', 'پ', 'P', 'چ', 'J', 'ژ', 'V', 'گ', 'G', 'ک', 'k', '=', '=', '.', '.', ',', ',', '،',
-            ',', '؟', '?', '!', '!', ' ', ' ', '\u200c', ' ', '\n', '\n', '\r', '\r', '۱', '1', '۲', '2', '۳', '3',
+            ',', '؟', '?', '!', '!', ' ', '_', '\u200c', '_', '\n', '\n', '\r', '\r', '۱', '1', '۲', '2', '۳', '3',
             '۴', '4', '۵', '5', '۶', '6', '۷', '7', '۸', '8', '۹', '9', '۰', '0', '«', '\"', '»', '\"', ':', ':',
             '%', '%', '/', '/', '\\', '\\', '-', '-', '_', '_', 'a', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', 'e',
             'f', 'f', 'g', 'g', 'h', 'h', 'i', 'i', 'j', 'j', 'k', 'k', 'l', 'l', 'm', 'm', 'n', 'n', 'o', 'o', 'p',
@@ -36,14 +36,16 @@ public class Transliterator {
     }
 
     public static void transliterate(Path input, Path output) throws IOException {
-        List<Line> lines = Line.getLines(input);
+        List<WordLine> lines = WordLine.getLines(input);
         StringBuilder builder = new StringBuilder();
-        for (Line line : lines) {
+        for (WordLine line : lines) {
             if (line.isEmpty) builder.append('\n');
             else builder.append(line.toString(0, transliterate(line.splits[0]).toString())).append('\n');
         }
+        System.out.println("number of lines is " + lines.size());
         List<String> outputLines = new ArrayList<>();
         outputLines.add(builder.toString());
+        Files.deleteIfExists(output);
         Files.write(output, outputLines, Charset.forName("UTF-8"));
     }
 
@@ -51,7 +53,7 @@ public class Transliterator {
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < input.length(); i++) {
             Character character = map.get(input.charAt(i));
-            builder.append(character == null ? " " : character);
+            builder.append(character == null ? "*" : character);
         }
         return builder;
     }

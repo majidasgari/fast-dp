@@ -1,7 +1,7 @@
 package ir.ac.iust.oie.fastdp;
 
 import edu.stanford.nlp.ling.TaggedWord;
-import ir.ac.iust.oie.fastdp.utils.Line;
+import ir.ac.iust.text.utils.WordLine;
 import iust.ac.ir.nlp.jhazm.POSTagger;
 
 import java.io.IOException;
@@ -17,13 +17,13 @@ import java.util.List;
 public class POSTagChanger {
 
     public static void changePOSTags(Path input, Path output, Integer maximumLines) throws IOException {
-        List<Line> lines = Line.getLines(input);
+        List<WordLine> lines = WordLine.getLines(input);
         POSTagger posTagger = new POSTagger();
         List<String> sentence = new ArrayList<>();
-        List<Line> actualSentence = new ArrayList<>();
+        List<WordLine> actualSentence = new ArrayList<>();
         StringBuilder builder = new StringBuilder();
         for (int i = 0, linesSize = lines.size(); i < linesSize; i++) {
-            Line line1 = lines.get(i);
+            WordLine line1 = lines.get(i);
             if (line1.isEmpty) {
                 if (!sentence.isEmpty()) {
                     List<TaggedWord> tagged = posTagger.batchTag(sentence);
@@ -44,16 +44,17 @@ public class POSTagChanger {
         }
         List<String> outputLines = new ArrayList<>();
         outputLines.add(builder.toString());
+        Files.deleteIfExists(output);
         Files.write(output, outputLines, Charset.forName("UTF-8"));
     }
 
-    private static void alignSentences(List<Line> actualSentence, List<TaggedWord> tagged, StringBuilder builder) {
+    private static void alignSentences(List<WordLine> actualSentence, List<TaggedWord> tagged, StringBuilder builder) {
         if (actualSentence.size() != tagged.size())
             System.exit(1);
         for (int i = 0; i < actualSentence.size(); i++) {
             builder.append(actualSentence.get(i).splits[0]).append('\t')
                     .append(tagged.get(i).tag()).append('\t')
-                    .append(actualSentence.get(i).splits[2]).append('\t')
+                    .append(actualSentence.get(i).splits[2])
                     .append('\n');
         }
         builder.append('\n');

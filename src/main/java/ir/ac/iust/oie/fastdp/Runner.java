@@ -1,15 +1,22 @@
 package ir.ac.iust.oie.fastdp;
 
+import edu.stanford.nlp.ling.TaggedWord;
 import ir.ac.iust.oie.fastdp.converter.PersianDadeganConverter;
 import ir.ac.iust.oie.fastdp.flexcrf.FlexCrfFeatureGenerator;
-import ir.ac.iust.text.utils.LoggerUtils;
-import ir.ac.iust.text.utils.StringBuilderWriter;
+import ir.ac.iust.text.utils.*;
+import iust.ac.ir.nlp.jhazm.*;
 import org.apache.commons.cli.*;
 import org.apache.log4j.Logger;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by majid on 12/20/14.
@@ -17,6 +24,28 @@ import java.nio.file.Paths;
 public class Runner {
 
     private static Logger logger = LoggerUtils.getLogger(Runner.class, "fast-dp.log");
+
+    public static boolean prepared = false;
+
+    private static void prepareFiles() throws IOException {
+        if (prepared) return;
+        FileHandler.setCopyRoot("resources");
+        FileHandler.prepareFile("linux", "crf");
+        String[] files = new String[]{"crf.exe", "crf.pdb", "cygwin1.dll"};
+        FileHandler.prepareFile("windows", files);
+        files = new String[]{"model.zip", "option.txt"};
+        FileHandler.prepareFile(".", files);
+        Path unzipDestination = FileHandler.getPath(".").toAbsolutePath();
+        if (!Files.exists(unzipDestination.resolve("model.txt")))
+            UnZip.unZipIt(FileHandler.getPath("model.zip").toAbsolutePath().toString(),
+                    unzipDestination.toString());
+        if (File.separator.equals("/")) {
+            for (File file : new File("resources/linux").listFiles()) {
+                file.setExecutable(true);
+            }
+        }
+        prepared = true;
+    }
 
     public static void main(String[] args) {
         // create the Options
@@ -73,16 +102,7 @@ public class Runner {
                 case convert:
                     logger.trace("convert, locale = " + locale);
                     if (locale.equals("fa")) {
-                        new PersianDadeganConverter(inputPath, outputPath).run();
-                        logger.trace("converting pos tags ...");
-                        Path posFile = outputPath.toAbsolutePath().getParent().resolve(outputPath.getFileName() + ".pos");
-                        POSTagChanger.changePOSTags(outputPath, posFile, 40000);
-                        Path translatedFile = outputPath.toAbsolutePath().getParent().resolve(outputPath.getFileName() + ".trans");
-                        Transliterator.transliterate(posFile, translatedFile);
-                        Path crfUntaggedPath = outputPath.toAbsolutePath().getParent().resolve(outputPath.getFileName() + ".tagged");
-                        FlexCrfFeatureGenerator.main(array("-lbl", translatedFile.toAbsolutePath().toString(),
-                                crfUntaggedPath.toAbsolutePath().toString(), "no"));
-                        Files.deleteIfExists(translatedFile);
+                        convert(inputPath, outputPath);
                     }
                     break;
                 //HELP:
@@ -92,11 +112,67 @@ public class Runner {
 //                            "-testFile", testPath.toFile().getAbsolutePath(),
 //                            "-macro", ">", modelPath.toFile().getAbsolutePath()});
                 case prediction:
+                    prediction("سلام خوبی؟", outputPath);
                     break;
             }
         } catch (Exception e) {
             logger.error(e);
         }
+    }
+
+    private static Normalizer normalizer = new Normalizer();
+    private static WordTokenizer tokenizer = null;
+    private static SentenceTokenizer sentenceTokenizer = null;
+    private static POSTagger tagger = null;
+
+    public static void prediction(String text, Path outputPath) throws IOException, InterruptedException {
+        prepareFiles();
+        if(tagger == null) tagger = new POSTagger();
+        if(tokenizer == null) tokenizer = new WordTokenizer();
+        if(sentenceTokenizer == null) sentenceTokenizer = new SentenceTokenizer();
+        text = normalizer.Run(text);
+        List<String> sentences = sentenceTokenizer.Tokenize(text);
+        List<WordLine> wordLines = new ArrayList<>();
+        for(String sentence : sentences) {
+            List<TaggedWord> taggedWords = tagger.batchTag(tokenizer.Tokenize(sentence));
+            for(TaggedWord taggedWord : taggedWords)
+                wordLines.add(new WordLine(taggedWord.word() + "\t" + taggedWord.tag()));
+            wordLines.add(new WordLine(""));
+        }
+        Path posFile = outputPath.toAbsolutePath().resolve(outputPath.getFileName() + ".pos");
+        List<String> lines = new ArrayList<>();
+        for(WordLine wordLine : wordLines) lines.add(wordLine.toString());
+        lines.add("");
+        Files.deleteIfExists(posFile);
+        Files.write(posFile, lines, Charset.forName("UTF-8"));
+        Path translatedFile = outputPath.toAbsolutePath().resolve(outputPath.getFileName() + ".tran");
+        Transliterator.transliterate(posFile, translatedFile);
+        System.out.println("transliterate to: " + translatedFile.toAbsolutePath());
+        Path crfUntaggedPath = outputPath.toAbsolutePath().resolve("data.untagged");
+        Files.deleteIfExists(crfUntaggedPath);
+        Files.createFile(crfUntaggedPath);
+        FlexCrfFeatureGenerator.main(array("-ulb", translatedFile.toAbsolutePath().toString(),
+                crfUntaggedPath.toString(), "no"));
+//        Files.deleteIfExists(translatedFile);
+        Path MODEL_FOLDER = Paths.get(".").toAbsolutePath().getParent();
+        Files.copy(crfUntaggedPath, MODEL_FOLDER.resolve("data.untagged"), StandardCopyOption.REPLACE_EXISTING);
+        NativeCommandRunner.runCommand("crf", "-prd", "-d", MODEL_FOLDER.toFile().getAbsolutePath(), "-o",
+                "option.txt");
+        Files.move(MODEL_FOLDER.resolve("data.untagged.model"), outputPath.resolve("data.untagged.model"),
+                StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    public static void convert(Path inputPath, Path outputPath) throws IOException {
+        new PersianDadeganConverter(inputPath, outputPath).run();
+        logger.trace("converting pos tags ...");
+        Path posFile = outputPath.toAbsolutePath().getParent().resolve(outputPath.getFileName() + ".pos");
+        POSTagChanger.changePOSTags(outputPath, posFile, null);
+        Path translatedFile = outputPath.toAbsolutePath().getParent().resolve(outputPath.getFileName() + ".trans");
+        Transliterator.transliterate(outputPath, translatedFile);
+        Path crfUntaggedPath = outputPath.toAbsolutePath().getParent().resolve(outputPath.getFileName() + ".tagged");
+        FlexCrfFeatureGenerator.main(array("-lbl", translatedFile.toAbsolutePath().toString(),
+                crfUntaggedPath.toAbsolutePath().toString(), "no"));
+        Files.deleteIfExists(translatedFile);
     }
 
     private static String[] array(String... input) {
