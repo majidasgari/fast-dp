@@ -1,7 +1,7 @@
 package ir.ac.iust.oie.fastdp;
 
 import edu.stanford.nlp.ling.TaggedWord;
-import ir.ac.iust.text.utils.WordLine;
+import ir.ac.iust.text.utils.ColumnedLine;
 import iust.ac.ir.nlp.jhazm.POSTagger;
 
 import java.io.IOException;
@@ -17,14 +17,14 @@ import java.util.List;
 public class POSTagChanger {
 
     public static void changePOSTags(Path input, Path output, Integer maximumLines) throws IOException {
-        List<WordLine> lines = WordLine.getLines(input);
+        List<ColumnedLine> lines = ColumnedLine.getLines(input);
         POSTagger posTagger = new POSTagger();
         List<String> sentence = new ArrayList<>();
-        List<WordLine> actualSentence = new ArrayList<>();
+        List<ColumnedLine> actualSentence = new ArrayList<>();
         StringBuilder builder = new StringBuilder();
         for (int i = 0, linesSize = lines.size(); i < linesSize; i++) {
-            WordLine line1 = lines.get(i);
-            if (line1.isEmpty) {
+            ColumnedLine line1 = lines.get(i);
+            if (line1.isEmpty()) {
                 if (!sentence.isEmpty()) {
                     List<TaggedWord> tagged = posTagger.batchTag(sentence);
                     alignSentences(actualSentence, tagged, builder);
@@ -34,7 +34,7 @@ public class POSTagChanger {
                     sentence.clear();
                 }
             } else {
-                sentence.add(line1.splits[0]);
+                sentence.add(line1.column(0));
                 actualSentence.add(line1);
             }
         }
@@ -48,13 +48,13 @@ public class POSTagChanger {
         Files.write(output, outputLines, Charset.forName("UTF-8"));
     }
 
-    private static void alignSentences(List<WordLine> actualSentence, List<TaggedWord> tagged, StringBuilder builder) {
+    private static void alignSentences(List<ColumnedLine> actualSentence, List<TaggedWord> tagged, StringBuilder builder) {
         if (actualSentence.size() != tagged.size())
             System.exit(1);
         for (int i = 0; i < actualSentence.size(); i++) {
-            builder.append(actualSentence.get(i).splits[0]).append('\t')
+            builder.append(actualSentence.get(i).column(0)).append('\t')
                     .append(tagged.get(i).tag()).append('\t')
-                    .append(actualSentence.get(i).splits[2])
+                    .append(actualSentence.get(i).column(2))
                     .append('\n');
         }
         builder.append('\n');

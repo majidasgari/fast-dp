@@ -4,7 +4,10 @@ import edu.stanford.nlp.ling.TaggedWord;
 import ir.ac.iust.oie.fastdp.converter.PersianDadeganConverter;
 import ir.ac.iust.oie.fastdp.flexcrf.FlexCrfFeatureGenerator;
 import ir.ac.iust.text.utils.*;
-import iust.ac.ir.nlp.jhazm.*;
+import iust.ac.ir.nlp.jhazm.Normalizer;
+import iust.ac.ir.nlp.jhazm.POSTagger;
+import iust.ac.ir.nlp.jhazm.SentenceTokenizer;
+import iust.ac.ir.nlp.jhazm.WordTokenizer;
 import org.apache.commons.cli.*;
 import org.apache.log4j.Logger;
 
@@ -23,9 +26,8 @@ import java.util.List;
  */
 public class Runner {
 
-    private static Logger logger = LoggerUtils.getLogger(Runner.class, "fast-dp.log");
-
     public static boolean prepared = false;
+    private static Logger logger = LoggerUtils.getLogger(Runner.class, "fast-dp.log");
 
     private static void prepareFiles() throws IOException {
         if (prepared) return;
@@ -120,46 +122,44 @@ public class Runner {
         }
     }
 
-    private static Normalizer normalizer = new Normalizer();
-    private static WordTokenizer tokenizer = null;
-    private static SentenceTokenizer sentenceTokenizer = null;
-    private static POSTagger tagger = null;
-
     public static void prediction(String text, Path outputPath) throws IOException, InterruptedException {
         prepareFiles();
-        if(tagger == null) tagger = new POSTagger();
-        if(tokenizer == null) tokenizer = new WordTokenizer();
-        if(sentenceTokenizer == null) sentenceTokenizer = new SentenceTokenizer();
-        text = normalizer.Run(text);
-        List<String> sentences = sentenceTokenizer.Tokenize(text);
-        List<WordLine> wordLines = new ArrayList<>();
-        for(String sentence : sentences) {
-            List<TaggedWord> taggedWords = tagger.batchTag(tokenizer.Tokenize(sentence));
-            for(TaggedWord taggedWord : taggedWords)
-                wordLines.add(new WordLine(taggedWord.word() + "\t" + taggedWord.tag()));
-            wordLines.add(new WordLine(""));
-        }
-        Path posFile = outputPath.toAbsolutePath().resolve(outputPath.getFileName() + ".pos");
-        List<String> lines = new ArrayList<>();
-        for(WordLine wordLine : wordLines) lines.add(wordLine.toString());
-        lines.add("");
-        Files.deleteIfExists(posFile);
-        Files.write(posFile, lines, Charset.forName("UTF-8"));
-        Path translatedFile = outputPath.toAbsolutePath().resolve(outputPath.getFileName() + ".tran");
-        Transliterator.transliterate(posFile, translatedFile);
-        System.out.println("transliterate to: " + translatedFile.toAbsolutePath());
+        Path posFile = makePosFile(text, outputPath);
+        Path transliteratedFile = outputPath.toAbsolutePath().resolve(outputPath.getFileName() + ".tran");
+        Transliterator.transliterate(posFile, transliteratedFile);
+        System.out.println("transliterate to: " + transliteratedFile.toAbsolutePath());
         Path crfUntaggedPath = outputPath.toAbsolutePath().resolve("data.untagged");
         Files.deleteIfExists(crfUntaggedPath);
         Files.createFile(crfUntaggedPath);
-        FlexCrfFeatureGenerator.main(array("-ulb", translatedFile.toAbsolutePath().toString(),
+        FlexCrfFeatureGenerator.main(array("-ulb", transliteratedFile.toAbsolutePath().toString(),
                 crfUntaggedPath.toString(), "no"));
-//        Files.deleteIfExists(translatedFile);
+//        Files.deleteIfExists(transliteratedFile);
         Path MODEL_FOLDER = Paths.get(".").toAbsolutePath().getParent();
         Files.copy(crfUntaggedPath, MODEL_FOLDER.resolve("data.untagged"), StandardCopyOption.REPLACE_EXISTING);
         NativeCommandRunner.runCommand("crf", "-prd", "-d", MODEL_FOLDER.toFile().getAbsolutePath(), "-o",
                 "option.txt");
         Files.move(MODEL_FOLDER.resolve("data.untagged.model"), outputPath.resolve("data.untagged.model"),
                 StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    public static Path makePosFile(String text, Path outputPath) throws IOException {
+        prepareFiles();
+        text = Normalizer.i().Run(text);
+        List<String> sentences = SentenceTokenizer.i().Tokenize(text);
+        List<ColumnedLine> columnedLines = new ArrayList<>();
+        for (String sentence : sentences) {
+            List<TaggedWord> taggedWords = POSTagger.i().batchTag(WordTokenizer.i().Tokenize(sentence));
+            for (TaggedWord taggedWord : taggedWords)
+                columnedLines.add(new ColumnedLine(taggedWord.word() + "\t" + taggedWord.tag()));
+            columnedLines.add(new ColumnedLine(""));
+        }
+        Path posFile = outputPath.toAbsolutePath().resolve(outputPath.getFileName() + ".pos");
+        List<String> lines = new ArrayList<>();
+        for (ColumnedLine columnedLine : columnedLines) lines.add(columnedLine.toString());
+        lines.add("");
+        Files.deleteIfExists(posFile);
+        Files.write(posFile, lines, Charset.forName("UTF-8"));
+        return posFile;
     }
 
     public static void convert(Path inputPath, Path outputPath) throws IOException {

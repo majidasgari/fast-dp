@@ -4,6 +4,8 @@ package ir.ac.iust.oie.fastdp.flexcrf;
  * Created by Majid on 31/05/2015.
  */
 
+import edu.stanford.nlp.util.StringUtils;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
@@ -122,7 +124,7 @@ public class FlexCrfFeatureGenerator {
                                 var16.append('\n');
                             } catch (Exception var15) {
                                 var15.printStackTrace();
-                                System.out.println("Error in line number = " + lineNumber);
+                                System.out.println("Error in line number = " + lineNumber + "(" + var21 + ") : " + line + StringUtils.join(var20));
                                 return;
                             }
                         }

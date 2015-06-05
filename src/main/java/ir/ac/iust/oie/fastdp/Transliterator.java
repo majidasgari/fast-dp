@@ -1,6 +1,6 @@
 package ir.ac.iust.oie.fastdp;
 
-import ir.ac.iust.text.utils.WordLine;
+import ir.ac.iust.text.utils.ColumnedLine;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -36,11 +36,11 @@ public class Transliterator {
     }
 
     public static void transliterate(Path input, Path output) throws IOException {
-        List<WordLine> lines = WordLine.getLines(input);
+        List<ColumnedLine> lines = ColumnedLine.getLines(input);
         StringBuilder builder = new StringBuilder();
-        for (WordLine line : lines) {
-            if (line.isEmpty) builder.append('\n');
-            else builder.append(line.toString(0, transliterate(line.splits[0]).toString())).append('\n');
+        for (ColumnedLine line : lines) {
+            if (line.isEmpty()) builder.append('\n');
+            else builder.append(line.toString(0, transliterate(line.column(0)).toString())).append('\n');
         }
         System.out.println("number of lines is " + lines.size());
         List<String> outputLines = new ArrayList<>();
